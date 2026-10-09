@@ -67,6 +67,12 @@ function Pocketlist({ pockets: pocketsProp, loading: loadingProp }) {
   const [selectedIds, setSelectedIds] = useState(loadStoredIds);
   const [panelOpen, setPanelOpen] = useState(false);
   const panelRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  const closePanel = () => {
+    setPanelOpen(false);
+    triggerRef.current?.focus();
+  };
 
   // Kalau akun berganti tanpa remount, muat ulang pilihan milik akun itu.
   useEffect(() => {
@@ -122,10 +128,21 @@ function Pocketlist({ pockets: pocketsProp, loading: loadingProp }) {
     if (!panelOpen) return;
     panelRef.current?.focus();
     const onKey = (e) => {
-      if (e.key === "Escape") setPanelOpen(false);
+      if (e.key === "Escape") closePanel();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [panelOpen]);
+
+  // Kunci scroll halaman selama bottom sheet terbuka di HP,
+  // supaya daftar kategori tidak ikut kegeser halaman belakang.
+  useEffect(() => {
+    if (!panelOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [panelOpen]);
 
   const visible = useMemo(() => {
@@ -191,9 +208,11 @@ function Pocketlist({ pockets: pocketsProp, loading: loadingProp }) {
         </h2>
         <button
           type="button"
+          ref={triggerRef}
           className={panelOpen ? "btn-icon-only is-open" : "btn-icon-only"}
           aria-label="Pilih pocket yang ditampilkan di dashboard"
           aria-expanded={panelOpen}
+          aria-controls="pocket-display-panel"
           onClick={() => setPanelOpen((open) => !open)}
         >
           {panelOpen ? <X size={18} /> : <SlidersHorizontal size={18} />}
@@ -204,22 +223,34 @@ function Pocketlist({ pockets: pocketsProp, loading: loadingProp }) {
         <>
           <div
             className="pockets-panel-overlay"
-            onClick={() => setPanelOpen(false)}
+            onClick={closePanel}
             aria-hidden="true"
           />
           <div
             className="pockets-panel"
             role="dialog"
-            aria-modal="false"
+            aria-modal="true"
             aria-label="Pilih pocket yang ditampilkan"
             tabIndex={-1}
             ref={panelRef}
+            id="pocket-display-panel"
           >
+            <div className="pockets-panel-grabber" aria-hidden="true" />
             <div className="pockets-panel-header">
-              <p>Tampilkan di dashboard</p>
-              <span className="pockets-panel-counter">
-                {chosenCount} dari {MAX_VISIBLE} dipilih
-              </span>
+              <div className="pockets-panel-titlebox">
+                <p>Tampilkan di dashboard</p>
+                <span className="pockets-panel-counter">
+                  {chosenCount} dari {MAX_VISIBLE} dipilih
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn-icon-only pockets-panel-close"
+                aria-label="Tutup pilihan pocket"
+                onClick={closePanel}
+              >
+                <X size={18} />
+              </button>
             </div>
             <div className="pockets-panel-list">
               {panelPockets.map((pocket, index) => {
@@ -265,6 +296,15 @@ function Pocketlist({ pockets: pocketsProp, loading: loadingProp }) {
             <p className="pockets-panel-hint">
               Pilihan tersimpan otomatis di perangkat ini.
             </p>
+            <div className="pockets-panel-footer">
+              <button
+                type="button"
+                className="pockets-panel-done"
+                onClick={closePanel}
+              >
+                Selesai
+              </button>
+            </div>
           </div>
         </>
       )}
