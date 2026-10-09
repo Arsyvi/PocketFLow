@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { CirclePlus, ArrowLeft, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import formatRibuan from "../utils/formatCurrency";
-import { createTransaction, invalidatePocketsCache } from "../API/api";
+import { createTransaction, invalidatePocketsCache, invalidateTransactionsCache } from "../API/api";
 import { usePockets } from "../hooks/usePockets";
 import { sortDefaultPocketsFirst } from "../utils/pocketUI";
 
@@ -36,6 +36,7 @@ function IncomeForm({ onBack }) {
             });
             toast.success("Pemasukan berhasil dicatat");
             invalidatePocketsCache();
+            invalidateTransactionsCache();
             onBack();
         } catch (error) {
             console.error(error);

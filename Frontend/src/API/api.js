@@ -368,7 +368,34 @@ export async function deletePocket(pocketId) {
 
 // API Transactions (pemasukan & pengeluaran)
 
+export const TRANSACTIONS_UPDATED_EVENT = "pocketflow:transactions-updated";
+
+let transactionsCache = null;
 let transactionsInflight = null;
+
+function normalizeTransactions(data) {
+  return Array.isArray(data) ? data : (data.data ?? []);
+}
+
+export function peekTransactionsCache() {
+  return transactionsCache;
+}
+
+function emitTransactionsUpdated() {
+  try {
+    window.dispatchEvent(new Event(TRANSACTIONS_UPDATED_EVENT));
+  } catch {
+    /* abaikan (non-browser) */
+  }
+}
+
+// Dipanggil setiap ada perubahan pemasukan/pengeluaran supaya
+// Weekly & Recent ikut refresh. Ganti halaman saja TIDAK memanggil ini,
+// jadi tidak ada refresh yang tidak perlu.
+export function invalidateTransactionsCache() {
+  transactionsCache = null;
+  emitTransactionsUpdated();
+}
 
 export async function getTransactions() {
   if (transactionsInflight) return transactionsInflight;
@@ -391,6 +418,28 @@ export async function getTransactions() {
   return transactionsInflight;
 }
 
+// Versi cache untuk dashboard: kalau cache ada, langsung pakai tanpa
+// fetch ulang (tidak ada skeleton tiap ganti halaman). Fetch hanya saat
+// cache kosong (pertama kali / setelah invalidate karena ada transaksi baru).
+export function refreshTransactionsCache() {
+  if (transactionsInflight) return transactionsInflight;
+  transactionsInflight = getTransactions()
+    .then((data) => {
+      transactionsCache = normalizeTransactions(data);
+      return transactionsCache;
+    })
+    .finally(() => {
+      transactionsInflight = null;
+    });
+  return transactionsInflight;
+}
+
+export function getTransactionsCached() {
+  if (transactionsInflight) return transactionsInflight;
+  if (transactionsCache) return Promise.resolve(transactionsCache);
+  return refreshTransactionsCache();
+}
+
 export async function createTransaction({
   pocket_id,
   type,
@@ -408,6 +457,8 @@ export async function createTransaction({
   if (!response.ok) {
     throw new Error(data.message || "Gagal mencatat transaksi");
   }
+
+  invalidateTransactionsCache();
 
   return data.data ?? data;
 }
@@ -427,6 +478,8 @@ export async function deleteTransaction(transactionId) {
   if (!response.ok) {
     throw new Error(data.message || "Gagal menghapus transaksi");
   }
+
+  invalidateTransactionsCache();
 
   return data;
 }

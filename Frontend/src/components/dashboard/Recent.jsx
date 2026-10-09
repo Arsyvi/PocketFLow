@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
 import { Receipt } from "lucide-react";
-import { getTransactions } from "../../API/api";
 import { RecentSkeleton } from "./DashboardSkeleton";
+import { useTransactions } from "../../hooks/useTransactions";
 
 function formatDate(value) {
   const date = new Date(value);
@@ -37,23 +36,9 @@ function TransactionItem({ transaction }) {
 }
 
 function Recent({ onOpenIncome }) {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    getTransactions()
-      .then((data) => {
-        if (active) setTransactions(Array.isArray(data) ? data : []);
-      })
-      .catch((error) => console.log(error))
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Pakai cache bersama: tidak fetch ulang tiap ganti halaman,
+  // hanya berubah saat ada pemasukan/pengeluaran baru.
+  const { transactions, loading } = useTransactions();
 
   if (loading) {
     return <RecentSkeleton count={5} />;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, HistoryIcon, Inbox } from "lucide-react";
+import { ArrowDownRight, ArrowUpLeft, HistoryIcon, Inbox } from "lucide-react";
 import { getTransactions } from "../API/api";
 
 function formatRp(value) {
@@ -114,7 +114,7 @@ function History() {
                         aria-pressed={activeFilter === "income"}
                         onClick={() => toggleFilter("income")}
                     >
-                        <ArrowDownLeft size={15} aria-hidden="true" />
+                        <ArrowUpLeft size={15} aria-hidden="true" />
                         <span>Pemasukan</span>
                     </button>
                     <button
@@ -123,7 +123,7 @@ function History() {
                         aria-pressed={activeFilter === "expense"}
                         onClick={() => toggleFilter("expense")}
                     >
-                        <ArrowUpRight size={15} aria-hidden="true" />
+                        <ArrowDownRight size={15} aria-hidden="true" />
                         <span>Pengeluaran</span>
                     </button>
                     {activeFilter && (

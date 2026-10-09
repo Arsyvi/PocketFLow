@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { userLogout } from "../API/api";
+import { invalidatePocketsCache, invalidateTransactionsCache, userLogout } from "../API/api";
+import { getCurrentAvatar } from "../utils/avatar";
 import { toast } from "sonner";
 import {
   CircleUser,
@@ -24,17 +25,19 @@ function Sidebar() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState(readStoredUser);
-  const [avatar, setAvatar] = useState(() =>
-    localStorage.getItem("pocketflow:avatar"),
-  );
+  const [avatar, setAvatar] = useState(() => getCurrentAvatar());
 
   useEffect(() => {
     const refresh = () => {
       setUser(readStoredUser());
-      setAvatar(localStorage.getItem("pocketflow:avatar"));
+      setAvatar(getCurrentAvatar());
     };
     window.addEventListener("user-updated", refresh);
-    return () => window.removeEventListener("user-updated", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("user-updated", refresh);
+      window.removeEventListener("storage", refresh);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -43,6 +46,9 @@ function Sidebar() {
       await userLogout();
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      invalidatePocketsCache();
+      invalidateTransactionsCache();
+      window.dispatchEvent(new Event("user-updated"));
       toast.success("Logout Berhasil");
       navigate("/login");
     } catch (error) {

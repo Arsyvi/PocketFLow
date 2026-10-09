@@ -7,15 +7,52 @@ import { enrichPocket, sortDefaultPocketsFirst } from "../../utils/pocketUI";
 import { usePockets } from "../../hooks/usePockets";
 
 const MAX_VISIBLE = 3;
-const STORAGE_KEY = "pocketflow:dashboardPockets";
+const LEGACY_STORAGE_KEY = "pocketflow:dashboardPockets";
 
-function loadStoredIds() {
+function readStoredUser() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    return JSON.parse(localStorage.getItem("user")) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function dashboardKeyFor(user) {
+  if (user?.id !== undefined && user?.id !== null && String(user.id) !== "") {
+    return `pocketflow:dashboardPockets:uid:${String(user.id)}`;
+  }
+  if (user?.email) {
+    return `pocketflow:dashboardPockets:email:${String(user.email).toLowerCase()}`;
+  }
+  return LEGACY_STORAGE_KEY;
+}
+
+function getDashboardKey() {
+  return dashboardKeyFor(readStoredUser());
+}
+
+function loadIdsFor(key) {
+  try {
+    const raw = localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : null;
     return Array.isArray(parsed) ? parsed.map(String) : null;
   } catch {
     return null;
+  }
+}
+
+function loadStoredIds() {
+  // Utamakan pilihan milik user ini; fallback legacy hanya untuk migrasi
+  // (id pocket unik per user, jadi pilihan user lain otomatis terbuang saat pruning).
+  const key = getDashboardKey();
+  return loadIdsFor(key) ?? (key !== LEGACY_STORAGE_KEY ? loadIdsFor(LEGACY_STORAGE_KEY) : null);
+}
+
+function saveIds(ids) {
+  try {
+    localStorage.setItem(getDashboardKey(), JSON.stringify(ids));
+  } catch {
+    /* abaikan */
   }
 }
 
@@ -31,6 +68,19 @@ function Pocketlist({ pockets: pocketsProp, loading: loadingProp }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const panelRef = useRef(null);
 
+  // Kalau akun berganti tanpa remount, muat ulang pilihan milik akun itu.
+  useEffect(() => {
+    const onUserChange = () => {
+      setSelectedIds(loadStoredIds());
+    };
+    window.addEventListener("user-updated", onUserChange);
+    window.addEventListener("storage", onUserChange);
+    return () => {
+      window.removeEventListener("user-updated", onUserChange);
+      window.removeEventListener("storage", onUserChange);
+    };
+  }, []);
+
   const activeIds = useMemo(() => {
     const existing = new Set(pockets.map((p) => String(p.id)));
     const base =
@@ -40,14 +90,33 @@ function Pocketlist({ pockets: pocketsProp, loading: loadingProp }) {
     return pockets.slice(0, MAX_VISIBLE).map((p) => String(p.id));
   }, [pockets, selectedIds]);
 
+  // Bekukan pilihan awal supaya pocket baru TIDAK otomatis masuk dashboard
+  // dan menggeser pocket yang sudah dipilih. Pilihan hanya berubah saat
+  // user mencentang manual di panel, atau saat pocket yang dipilih dihapus.
+  // Sinkronisasi sekali dari async data + localStorage memang butuh effect.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (!selectedIds) return;
+    if (pockets.length === 0) return;
+    if (!selectedIds) {
+      const initial = pockets.slice(0, MAX_VISIBLE).map((p) => String(p.id));
+      setSelectedIds(initial);
+      saveIds(initial);
+      return;
+    }
     const existing = new Set(pockets.map((p) => String(p.id)));
     const pruned = selectedIds.filter((id) => existing.has(id));
     if (pruned.length !== selectedIds.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
+      if (pruned.length > 0) {
+        setSelectedIds(pruned);
+        saveIds(pruned);
+      } else {
+        const fallback = pockets.slice(0, MAX_VISIBLE).map((p) => String(p.id));
+        setSelectedIds(fallback);
+        saveIds(fallback);
+      }
     }
   }, [pockets, selectedIds]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!panelOpen) return;
@@ -80,12 +149,12 @@ function Pocketlist({ pockets: pocketsProp, loading: loadingProp }) {
       if (current.length <= 1) return;
       const next = current.filter((v) => v !== key);
       setSelectedIds(next);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      saveIds(next);
     } else {
       if (current.length >= MAX_VISIBLE) return;
       const next = [...current, key];
       setSelectedIds(next);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      saveIds(next);
     }
   };
 

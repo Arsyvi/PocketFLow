@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { userLogin } from "../API/api";
+import { userLogin, invalidatePocketsCache, invalidateTransactionsCache } from "../API/api";
 import AuthBox from "../components/AuthBox";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { clearLegacyAvatar } from "../utils/avatar";
 import logo from "../assets/favicon.png";
 
 function Login() {
@@ -25,8 +26,15 @@ function Login() {
       });
 
       console.log(data);
+      // Bersihkan cache user sebelumnya supaya data/saldo tidak bocor ke akun lain.
+      invalidatePocketsCache();
+      invalidateTransactionsCache();
+      // Hapus foto global lama: user baru harus mulai dengan foto kosong,
+      // bukan mewarisi foto user lain di perangkat yang sama.
+      clearLegacyAvatar();
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      window.dispatchEvent(new Event("user-updated"));
       const message = JSON.parse(localStorage.getItem("user"));
       toast.success("Login Berhasil", {
         description: `Selamat datang kembali, ${message?.name}`,

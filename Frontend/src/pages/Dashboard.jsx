@@ -11,7 +11,7 @@ function Dashboard() {
     const { pockets, loading: loadingPockets, refresh: refreshPockets } = usePockets()
     const [View,setView] = useState("dashboard")
 
-    // Refresh diam-diam tiap kembali ke dashboard (habis catat transaksi)
+    
     useEffect(() => {
         if (View !== "dashboard") return;
         refreshPockets().catch(() => {});

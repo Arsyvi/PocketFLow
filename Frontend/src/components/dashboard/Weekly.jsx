@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { BarChart } from "lucide-react";
-import { getTransactions } from "../../API/api";
 import { WeeklySkeleton } from "./DashboardSkeleton";
 import { enrichPocket } from "../../utils/pocketUI";
+import { useTransactions } from "../../hooks/useTransactions";
 
 function startOfWeekMonday(now = new Date()) {
   const monday = new Date(now);
@@ -17,54 +17,41 @@ function formatRp(value) {
 }
 
 function Weekly() {
-  const [weeklyAmount, setWeeklyAmount] = useState(0);
-  const [topPocket, setTopPocket] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Pakai cache bersama: tidak fetch ulang tiap ganti halaman,
+  // hanya berubah saat ada pemasukan/pengeluaran baru.
+  const { transactions, loading } = useTransactions();
 
-  useEffect(() => {
-    let active = true;
-    getTransactions()
-      .then((data) => {
-        if (!active) return;
-        const list = Array.isArray(data) ? data : [];
-        const monday = startOfWeekMonday();
-        const weekly = list.filter(
-          (tx) => tx.type === "expense" && new Date(tx.created_at) >= monday,
-        );
-        const total = weekly.reduce(
-          (sum, tx) => sum + Number(tx.amount ?? 0),
-          0,
-        );
-        setWeeklyAmount(total);
+  const { weeklyAmount, topPocket } = useMemo(() => {
+    const list = Array.isArray(transactions) ? transactions : [];
+    const monday = startOfWeekMonday();
+    const weekly = list.filter(
+      (tx) => tx.type === "expense" && new Date(tx.created_at) >= monday,
+    );
+    const total = weekly.reduce(
+      (sum, tx) => sum + Number(tx.amount ?? 0),
+      0,
+    );
 
-        const byPocket = new Map();
-        for (const tx of weekly) {
-          const key =
-            tx.pocket?.id ?? tx.pocket_id ?? tx.pocket?.name ?? "unknown";
-          const entry = byPocket.get(key) ?? {
-            name: tx.pocket?.name ?? "Pocket",
-            total: 0,
-            count: 0,
-            sample: tx.pocket ?? { name: tx.pocket?.name ?? "Pocket" },
-          };
-          entry.total += Number(tx.amount ?? 0);
-          entry.count += 1;
-          byPocket.set(key, entry);
-        }
-        let top = null;
-        for (const entry of byPocket.values()) {
-          if (!top || entry.total > top.total) top = entry;
-        }
-        setTopPocket(top);
-      })
-      .catch((error) => console.log(error))
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    const byPocket = new Map();
+    for (const tx of weekly) {
+      const key =
+        tx.pocket?.id ?? tx.pocket_id ?? tx.pocket?.name ?? "unknown";
+      const entry = byPocket.get(key) ?? {
+        name: tx.pocket?.name ?? "Pocket",
+        total: 0,
+        count: 0,
+        sample: tx.pocket ?? { name: tx.pocket?.name ?? "Pocket" },
+      };
+      entry.total += Number(tx.amount ?? 0);
+      entry.count += 1;
+      byPocket.set(key, entry);
+    }
+    let top = null;
+    for (const entry of byPocket.values()) {
+      if (!top || entry.total > top.total) top = entry;
+    }
+    return { weeklyAmount: total, topPocket: top };
+  }, [transactions]);
 
   if (loading) {
     return <WeeklySkeleton />;

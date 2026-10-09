@@ -1,12 +1,16 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera, ChevronRight, CircleUser, Lock, LogOut, Mail, Palette, Moon, Sun, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
-import { userLogout } from "../API/api";
+import { invalidatePocketsCache, invalidateTransactionsCache, userLogout } from "../API/api";
+import {
+  getCurrentAvatar,
+  removeCurrentAvatar,
+  setCurrentAvatar,
+} from "../utils/avatar";
 import EditNameForm from "../components/Profil/EditNameForm";
 import ChangePasswordForm from "../components/Profil/ChangePasswordForm";
 
-const AVATAR_KEY = "pocketflow:avatar";
 const MAX_AVATAR_DIM = 256;
 
 function readStoredUser() {
@@ -48,10 +52,23 @@ function fileToAvatarDataUrl(file) {
 function Profil({ theme = "light", setTheme }) {
     const navigate = useNavigate();
     const [user, setUser] = useState(readStoredUser);
-    const [avatar, setAvatar] = useState(() => localStorage.getItem(AVATAR_KEY));
+    // Avatar per-user: user baru selalu mulai kosong, tidak ikut foto user lain.
+    const [avatar, setAvatar] = useState(() => getCurrentAvatar());
     const [view, setView] = useState("main");
     const [loggingOut, setLoggingOut] = useState(false);
     const fileRef = useRef(null);
+
+    // Kalau akun berganti (login akun lain tanpa remount), muat foto milik
+    // akun itu lewat event — kosong kalau akun tersebut belum pasang foto.
+    useEffect(() => {
+        const reload = () => setAvatar(getCurrentAvatar());
+        window.addEventListener("user-updated", reload);
+        window.addEventListener("storage", reload);
+        return () => {
+            window.removeEventListener("user-updated", reload);
+            window.removeEventListener("storage", reload);
+        };
+    }, []);
 
     const handleNameSaved = (apiUser, name) => {
         const merged = { ...(user ?? {}), ...(apiUser ?? {}), name };
@@ -75,7 +92,7 @@ function Profil({ theme = "light", setTheme }) {
         }
         try {
             const dataUrl = await fileToAvatarDataUrl(file);
-            localStorage.setItem(AVATAR_KEY, dataUrl);
+            setCurrentAvatar(dataUrl);
             setAvatar(dataUrl);
             window.dispatchEvent(new Event("user-updated"));
             toast.success("Foto profil diperbarui");
@@ -85,7 +102,7 @@ function Profil({ theme = "light", setTheme }) {
     };
 
     const removePhoto = () => {
-        localStorage.removeItem(AVATAR_KEY);
+        removeCurrentAvatar();
         setAvatar(null);
         window.dispatchEvent(new Event("user-updated"));
         toast.success("Foto profil dihapus");
@@ -100,6 +117,9 @@ function Profil({ theme = "light", setTheme }) {
         } finally {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
+            invalidatePocketsCache();
+            invalidateTransactionsCache();
+            window.dispatchEvent(new Event("user-updated"));
             toast.success("Logout Berhasil");
             navigate("/login");
             setLoggingOut(false);
