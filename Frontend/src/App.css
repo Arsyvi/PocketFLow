@@ -533,12 +533,49 @@ main {
     text-overflow: ellipsis;
 }
 
+.transaction-desc {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
 .transaction-desc p {
+    flex: 1;
+    min-width: 0;
     font-size: 0.8rem;
     color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Baris yang bisa dibuka: kursor + chevron sebagai petunjuk */
+.transaction-item.is-expandable {
+    cursor: pointer;
+}
+
+.transaction-item.is-expandable:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+.tx-expand-icon {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+
+.transaction-item.is-expanded .transaction-desc p {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+}
+
+.transaction-item.is-expanded .tx-expand-icon {
+    transform: rotate(180deg);
 }
 
 .transaction-date p {
@@ -723,6 +760,41 @@ main {
 .form-goal {
     display: flex;
     gap: 10px;
+    align-items: flex-end;
+}
+
+/* Toggle lipat form: khusus HP, disembunyikan di desktop/tablet */
+.goal-form-toggle {
+    display: none;
+}
+
+/* Setiap field: label mungil di atas input (pengganti placeholder-only
+   yang hilang saat mengetik dan tak terbaca screen reader) */
+.goal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.goal-field label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.goal-optional {
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+.goal-field-name {
+    flex: 2;
+}
+
+.goal-field-target,
+.goal-field-accum {
+    flex: 1.5;
 }
 
 .form-goal input {
@@ -741,13 +813,10 @@ main {
     border-color: var(--primary);
 }
 
-.input-goal {
-    flex: 2;
-}
-
+.input-goal,
 .input-target,
 .input-terkumpul {
-    flex: 1.5;
+    width: 100%;
 }
 
 .btn-goal {
@@ -2429,9 +2498,56 @@ body.dark-mode .input-group {
 
 .goal-skeleton-form {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+/* Tiru tombol lipat HP: disembunyikan di desktop/tablet */
+.goal-skeleton-toggle {
+    display: none;
+}
+
+/* Tiru field berlabel di form asli (nama 2 : target 1,5 : terkumpul 1,5) */
+.goal-skeleton-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.goal-skeleton-field-name {
+    flex: 2;
+    min-width: 120px;
+}
+
+.goal-skeleton-field-target,
+.goal-skeleton-field-accum {
+    flex: 1.5;
+    min-width: 120px;
+}
+
+.skeleton-label {
+    width: 64px;
+    height: 12px;
+}
+
+/* Bar untuk progress dan tombol di skeleton kartu goal */
+.skeleton-bar-full {
+    width: 160px;
+    max-width: 100%;
+    height: 12px;
+    border-radius: 999px;
+}
+
+.skeleton-btn-big {
+    width: 110px;
+    height: 36px;
+}
+
+.skeleton-btn-icon {
+    width: 36px;
+    height: 36px;
 }
 
 .skeleton-input {
@@ -3694,12 +3810,15 @@ img {
         flex-wrap: wrap;
     }
 
-    .form-goal .input-goal {
+    .form-goal .goal-field-name,
+    .goal-skeleton-form .goal-skeleton-field-name {
         flex: 1 1 100%;
     }
 
-    .form-goal .input-target,
-    .form-goal .input-terkumpul {
+    .form-goal .goal-field-target,
+    .form-goal .goal-field-accum,
+    .goal-skeleton-form .goal-skeleton-field-target,
+    .goal-skeleton-form .goal-skeleton-field-accum {
         flex: 1 1 45%;
     }
 
@@ -3930,10 +4049,64 @@ img {
         margin-top: 1.25rem;
     }
 
+    /* HP: pocket jadi carousel horizontal dengan peek.
+       Alasan: hemat vertikal seperti versi 3-kolom, tapi tiap kartu tetap
+       lebar (~78%) sehingga nama + nominal terbaca penuh. Kartu berikut
+       yang mengintip memberi affordance swipe ala GoPay/OVO/DANA. */
     .pockets-grid {
-        grid-template-columns: 1fr;
+        display: flex;
         gap: 12px;
         margin-top: 0.75rem;
+        overflow-x: auto;
+        padding: 4px 2px 12px;
+        scroll-snap-type: x mandatory;
+        scroll-padding: 2px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    .pockets-grid::-webkit-scrollbar {
+        display: none;
+    }
+
+    .pockets-grid > * {
+        flex: 0 0 78%;
+        max-width: 300px;
+        min-width: 0;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
+
+    .pocket-card-blue,
+    .pocket-card-green,
+    .pocket-card-yellow,
+    .pocket-card-purple,
+    .pocket-card-red,
+    .pocket-card-cyan,
+    .pocket-card-skeleton {
+        padding: 1rem;
+        gap: 8px;
+        border-radius: 16px;
+    }
+
+    .pockets-grid .pocket-header {
+        gap: 10px;
+    }
+
+    .pockets-grid .pocket-title {
+        font-size: 0.92rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+
+    .pockets-grid .amount {
+        font-size: 1.05rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .card-group {
@@ -4003,8 +4176,77 @@ img {
     /* Goal HP: kartu kompak 3 baris (nama+nominal, progress, aksi).
        Alasan: 5 elemen sebaris tidak muat 360px tanpa scroll atau
        teks mikro; nominal format "X / Y" satu baris biar familiar. */
+    /* Skeleton meniru form terlipat: cukup tombol, form disembunyikan */
+    .goal-skeleton-toggle {
+        display: block;
+        width: 100%;
+        min-height: 48px;
+        border-radius: 12px;
+    }
+
+    .goal-skeleton-form {
+        display: none;
+    }
+
+    /* Skeleton kartu: progress dan aksi full-width seperti aslinya */
+    .goal-skeleton-list .skeleton-bar-full {
+        width: 100%;
+    }
+
+    .goal-skeleton-list .skeleton-btn-big {
+        flex: 1 1 auto;
+        min-height: 44px;
+    }
+
+    .goal-skeleton-list .skeleton-btn-icon {
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+    }
+    /* Goal HP: form dilipat di balik tombol (progressive disclosure).
+       Alasan: form 3 input + tombol setinggi ~230px selalu tampil dan
+       mendorong daftar goal ke bawah fold; user yang cuma mau cek progres
+       dipaksa scroll lewat form dulu. Satu tugas satu layar. */
+    .goal-form-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        min-height: 48px;
+        padding: 10px 18px;
+        border: none;
+        border-radius: 12px;
+        background: var(--primary);
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.92rem;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+    }
+
+    .goal-form-toggle:hover {
+        background: var(--primary-hover);
+    }
+
+    .goal-form-toggle:active {
+        transform: scale(0.98);
+    }
+
     .form-goal {
+        display: none;
+    }
+
+    .form-goal.is-open {
+        display: flex;
         flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 1rem;
+        border-radius: 16px;
+        background: var(--surface);
+        box-shadow: 2px 5px 10px var(--shadow-soft);
+        border: 1px solid var(--border);
     }
 
     .form-goal input {
@@ -4106,7 +4348,7 @@ img {
         border-radius: 12px;
     }
 
-    /* Pocket HP: 1 kolom, kartu kompak, tombol 44px */
+   
     .pocket-header-spread {
         flex-direction: column;
         align-items: stretch;
@@ -4408,6 +4650,14 @@ img {
     .goal-pocket-options {
         grid-template-columns: 1fr;
     }
+
+    .pockets-grid {
+        gap: 10px;
+    }
+
+    .pockets-grid > * {
+        flex-basis: 82%;
+    }
 }
 
 /* ---------- Tablet tegak tanggung: cegah teks authbox meluap ---------- */
@@ -4433,5 +4683,8 @@ img {
     .illust-circle,
     .illust-logo {
         animation: none;
+    }
+    .tx-expand-icon {
+        transition: none;
     }
 }

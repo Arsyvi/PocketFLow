@@ -77,9 +77,9 @@ function AppRoutes({ theme, setTheme }) {
           </nav>
           <main>
             <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<Navigate to="/beranda" replace />} />
               <Route
-                path="/dashboard"
+                path="/beranda"
                 element={
                   <ProtectedRoute>
                     {" "}

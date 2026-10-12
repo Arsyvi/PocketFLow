@@ -26,11 +26,8 @@ function Login() {
       });
 
       console.log(data);
-      // Bersihkan cache user sebelumnya supaya data/saldo tidak bocor ke akun lain.
       invalidatePocketsCache();
       invalidateTransactionsCache();
-      // Hapus foto global lama: user baru harus mulai dengan foto kosong,
-      // bukan mewarisi foto user lain di perangkat yang sama.
       clearLegacyAvatar();
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -39,7 +36,7 @@ function Login() {
       toast.success("Login Berhasil", {
         description: `Selamat datang kembali, ${message?.name}`,
       });
-      navigate("/dashboard");
+      navigate("/beranda");
     } catch (error) {
       console.log(error);
       toast.error(error.message);

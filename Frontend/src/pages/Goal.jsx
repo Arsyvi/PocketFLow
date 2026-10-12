@@ -1,4 +1,4 @@
-import { GoalIcon, Trash, Trophy } from "lucide-react";
+import { GoalIcon, Plus, Trash, Trophy } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import GoalEdit from "../components/Goals/GoalEdit";
@@ -15,6 +15,9 @@ function Goal() {
     const [delGoal, setDelGoal] = useState(null)
     const [loading, setLoading] = useState(true)
     const [creating, setCreating] = useState(false)
+    // HP: form buat goal dilipat di balik tombol (progressive disclosure)
+    // supaya daftar goal langsung terlihat. Desktop selalu terbuka.
+    const [showForm, setShowForm] = useState(false)
 
     const refreshGoals = () => {
         setLoading(true)
@@ -49,6 +52,10 @@ function Goal() {
         setGoalName("");
         setGoalTarget("");
         setGoalAccumulated("");
+        // Di HP lipat lagi formnya biar hasil langsung terlihat
+        if (window.matchMedia?.("(max-width: 768px)").matches) {
+            setShowForm(false);
+        }
         refreshGoals();
     } catch (error) {
         console.error(error);
@@ -60,24 +67,47 @@ function Goal() {
     return(
         <div className="goal">
             {loading ? (
-                <div className="goal-skeleton">
+                <div className="goal-skeleton" aria-busy="true" aria-label="Memuat goal">
                     <div className="goal-skeleton-header">
                         <div className="skeleton skeleton-circle" />
                         <div className="skeleton skeleton-title" />
                     </div>
-                    <div className="goal-skeleton-form">
-                        <div className="skeleton skeleton-input" />
-                        <div className="skeleton skeleton-input" />
-                        <div className="skeleton skeleton-input" />
+                    {/* HP: form terlipat jadi cukup tiru tombolnya.
+                        Desktop/tablet: tiru field berlabel + tombol. */}
+                    <div className="skeleton goal-skeleton-toggle" aria-hidden="true" />
+                    <div className="goal-skeleton-form" aria-hidden="true">
+                        <div className="goal-skeleton-field goal-skeleton-field-name">
+                            <div className="skeleton skeleton-label" />
+                            <div className="skeleton skeleton-input" />
+                        </div>
+                        <div className="goal-skeleton-field goal-skeleton-field-target">
+                            <div className="skeleton skeleton-label" />
+                            <div className="skeleton skeleton-input" />
+                        </div>
+                        <div className="goal-skeleton-field goal-skeleton-field-accum">
+                            <div className="skeleton skeleton-label" />
+                            <div className="skeleton skeleton-input" />
+                        </div>
                         <div className="skeleton skeleton-button" />
                     </div>
                     <div className="goal-skeleton-list">
                         {[1, 2, 3].map((item) => (
-                            <div className="goal-skeleton-item" key={item}>
-                                <div className="skeleton skeleton-text" />
-                                <div className="skeleton skeleton-text-wide" />
-                                <div className="skeleton skeleton-bar" />
-                                <div className="skeleton skeleton-btn-small" />
+                            /* Pakai struktur .goal-item asli supaya skeleton
+                               meniru kartu beneran di semua ukuran layar */
+                            <div className="goal-item" aria-hidden="true" key={item}>
+                                <div className="goal-name">
+                                    <div className="skeleton skeleton-text" />
+                                </div>
+                                <div className="goal-amount">
+                                    <div className="skeleton skeleton-text-wide" />
+                                </div>
+                                <div className="progress-bar">
+                                    <div className="skeleton skeleton-bar-full" />
+                                </div>
+                                <div className="goal-actions">
+                                    <div className="skeleton skeleton-btn-big" />
+                                    <div className="skeleton skeleton-btn-icon" />
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -89,10 +119,33 @@ function Goal() {
                             <GoalIcon size={30} />
                             <h1>Goal</h1>
                         </div>
-                        <form className="form-goal" onSubmit={submitHandle}>
-                            <input type="text" className="input-goal" placeholder="Nama Goal Kamu" maxLength={30} value={goalName} onChange={(e)=> setGoalName(e.target.value)} required/>
-                            <input type="text" inputMode="numeric" className="input-target" placeholder="Target Goal Kamu"  value={goalTarget} onChange={(e)=> setGoalTarget(formatRibuan(e.target.value))} required/>
-                            <input type="text" inputMode="numeric" className="input-terkumpul" placeholder="Sudah Terkumpul Berapa" value={goalAccumulated} onChange={(e)=>setGoalAccumulated(formatRibuan(e.target.value))} />
+                        <button
+                            type="button"
+                            className="goal-form-toggle"
+                            aria-expanded={showForm}
+                            aria-controls="goal-create-form"
+                            onClick={() => setShowForm((v) => !v)}
+                        >
+                            <Plus size={18} aria-hidden="true" />
+                            <span>{showForm ? "Tutup form" : "Buat goal baru"}</span>
+                        </button>
+                        <form
+                            id="goal-create-form"
+                            className={showForm ? "form-goal is-open" : "form-goal"}
+                            onSubmit={submitHandle}
+                        >
+                            <div className="goal-field goal-field-name">
+                                <label htmlFor="goalName">Nama goal</label>
+                                <input id="goalName" type="text" className="input-goal" placeholder="cth: Dana Darurat" maxLength={30} value={goalName} onChange={(e)=> setGoalName(e.target.value)} required/>
+                            </div>
+                            <div className="goal-field goal-field-target">
+                                <label htmlFor="goalTarget">Target</label>
+                                <input id="goalTarget" type="text" inputMode="numeric" className="input-target" placeholder="cth: 5.000.000"  value={goalTarget} onChange={(e)=> setGoalTarget(formatRibuan(e.target.value))} required/>
+                            </div>
+                            <div className="goal-field goal-field-accum">
+                                <label htmlFor="goalAccumulated">Terkumpul <span className="goal-optional">· opsional</span></label>
+                                <input id="goalAccumulated" type="text" inputMode="numeric" className="input-terkumpul" placeholder="cth: 500.000" value={goalAccumulated} onChange={(e)=>setGoalAccumulated(formatRibuan(e.target.value))} />
+                            </div>
                             <button className="btn-goal" type="submit" disabled={creating}>
                                 {creating ? <span className="spinner spinner-sm" /> : "+ Tambah"}
                             </button>

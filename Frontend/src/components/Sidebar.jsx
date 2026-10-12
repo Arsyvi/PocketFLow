@@ -5,12 +5,12 @@ import { getCurrentAvatar } from "../utils/avatar";
 import { toast } from "sonner";
 import {
   CircleUser,
-  LayoutDashboard,
   HistoryIcon,
   GoalIcon,
   Wallet,
   LogOutIcon,
   Loader2,
+  HomeIcon,
 } from "lucide-react";
 
 function readStoredUser() {
@@ -78,9 +78,9 @@ function Sidebar() {
       <ul className="menu">
         <p className="menu-label">MENU</p>
         <li>
-          <NavLink to="/dashboard">
-            <LayoutDashboard size={22} />
-            <span className="nav-label">Dashboard</span>
+          <NavLink to="/beranda">
+            <HomeIcon size={22} />
+            <span className="nav-label">Beranda</span>
           </NavLink>
         </li>
         <li>

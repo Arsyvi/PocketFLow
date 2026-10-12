@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Goal;
 use App\Models\GoalContribution;
 use App\Models\Pocket;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -156,8 +157,9 @@ class GoalController extends Controller
             }
             $credited = array_sum($takes);
             $userId = auth()->id();
+            $goalName = $goal->name;
 
-            DB::transaction(function () use ($pockets, $takes, $goal, $credited, $userId) {
+            DB::transaction(function () use ($pockets, $takes, $goal, $credited, $userId, $goalName) {
                 foreach ($takes as $pid => $take) {
                     $pockets[$pid]->decrement('balance', $take);
                     GoalContribution::create([
@@ -165,6 +167,14 @@ class GoalController extends Controller
                         'goal_id' => $goal->id,
                         'pocket_id' => $pid,
                         'amount' => $take,
+                    ]);
+                    // Catat ke history supaya tidak ada dana hilang tanpa jejak
+                    Transaction::create([
+                        'user_id' => $userId,
+                        'pocket_id' => $pid,
+                        'type' => 'expense',
+                        'amount' => $take,
+                        'description' => 'Setor ke goal "' . $goalName . '"',
                     ]);
                 }
                 $goal->increment('current_amount', $credited);
@@ -198,12 +208,22 @@ class GoalController extends Controller
             }
 
             DB::transaction(function () use ($pocket, $goal, $credited) {
+                $userId = auth()->id();
+                $goalName = $goal->name;
                 $pocket->decrement('balance', $credited);
                 GoalContribution::create([
-                    'user_id' => auth()->id(),
+                    'user_id' => $userId,
                     'goal_id' => $goal->id,
                     'pocket_id' => $pocket->id,
                     'amount' => $credited,
+                ]);
+                // Catat ke history supaya tidak ada dana hilang tanpa jejak
+                Transaction::create([
+                    'user_id' => $userId,
+                    'pocket_id' => $pocket->id,
+                    'type' => 'expense',
+                    'amount' => $credited,
+                    'description' => 'Setor ke goal "' . $goalName . '"',
                 ]);
                 $goal->increment('current_amount', $credited);
             });
@@ -297,8 +317,18 @@ class GoalController extends Controller
         }
 
         DB::transaction(function () use ($goal, $refunds) {
+            $userId = auth()->id();
+            $goalName = $goal->name;
             foreach ($refunds as $pid => $amt) {
                 Pocket::where('id', $pid)->increment('balance', $amt);
+                // Catat pengembalian ke history supaya aliran dana jelas
+                Transaction::create([
+                    'user_id' => $userId,
+                    'pocket_id' => $pid,
+                    'type' => 'income',
+                    'amount' => $amt,
+                    'description' => 'Pengembalian dari goal "' . $goalName . '"',
+                ]);
             }
             $goal->delete(); // contributions ikut terhapus (cascade)
         });

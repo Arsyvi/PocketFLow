@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownRight, ArrowUpLeft, HistoryIcon, Inbox } from "lucide-react";
+import { ArrowDownRight, ArrowUpLeft, ChevronDown, HistoryIcon, Inbox } from "lucide-react";
 import { getTransactions } from "../API/api";
 
 function formatRp(value) {
@@ -17,6 +17,8 @@ function History() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeFilter, setActiveFilter] = useState(null);
+    // ID transaksi yang deskripsinya sedang dibuka penuh (ketuk untuk buka/tutup)
+    const [expandedId, setExpandedId] = useState(null);
 
     const load = () => {
         setLoading(true);
@@ -171,8 +173,38 @@ function History() {
                     ) : (
                         visible.map((tx) => {
                             const isIncome = tx.type === "income";
+                            const desc = tx.description?.trim() ? tx.description : "-";
+                            const canExpand = desc !== "-";
+                            const isExpanded = expandedId === tx.id;
+                            const toggleExpand = () => {
+                                if (!canExpand) return;
+                                setExpandedId((prev) => (prev === tx.id ? null : tx.id));
+                            };
                             return (
-                                <div className="transaction-item" key={tx.id}>
+                                <div
+                                    className={
+                                        "transaction-item" +
+                                        (canExpand ? " is-expandable" : "") +
+                                        (isExpanded ? " is-expanded" : "")
+                                    }
+                                    key={tx.id}
+                                    {...(canExpand
+                                        ? {
+                                            role: "button",
+                                            tabIndex: 0,
+                                            "aria-expanded": isExpanded,
+                                            "aria-label": `${tx.pocket?.name ?? "Pocket"}, ${desc}. Ketuk untuk ${isExpanded ? "meringkas" : "melihat"} deskripsi penuh.`,
+                                            title: isExpanded ? "Ketuk untuk meringkas" : "Ketuk untuk lihat deskripsi penuh",
+                                            onClick: toggleExpand,
+                                            onKeyDown: (e) => {
+                                                if (e.key === "Enter" || e.key === " ") {
+                                                    e.preventDefault();
+                                                    toggleExpand();
+                                                }
+                                            },
+                                        }
+                                        : {})}
+                                >
                                     <div className={`transaction-icon tx-${tx.type}`} aria-hidden="true">
                                         {isIncome ? "+" : "-"}
                                     </div>
@@ -181,7 +213,14 @@ function History() {
                                             <h1>{tx.pocket?.name ?? "Pocket"}</h1>
                                         </div>
                                         <div className="transaction-desc">
-                                            <p>{tx.description || "-"}</p>
+                                            <p>{desc}</p>
+                                            {canExpand && (
+                                                <ChevronDown
+                                                    size={14}
+                                                    className="tx-expand-icon"
+                                                    aria-hidden="true"
+                                                />
+                                            )}
                                         </div>
                                         <div className="transaction-date">
                                             <p>{formatDate(tx.created_at)}</p>

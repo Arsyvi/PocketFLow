@@ -1,7 +1,7 @@
 import formatRibuan from "../../utils/formatCurrency";
 import { toast } from "sonner";
 import { useState } from "react";
-import { addAmount, invalidatePocketsCache } from "../../API/api";
+import { addAmount, invalidatePocketsCache, invalidateTransactionsCache } from "../../API/api";
 import { usePockets } from "../../hooks/usePockets";
 import PocketSourcePicker from "../Pocket/PocketSourcePicker";
 import { GoalIcon, Trophy, ArrowRight } from "lucide-react";
@@ -57,6 +57,7 @@ function GoalEdit({ goal, onBack, onUpdated }) {
         );
       }
       invalidatePocketsCache();
+      invalidateTransactionsCache();
       onUpdated();
       onBack();
     } catch (error) {

@@ -4,6 +4,7 @@ import {
   DeleteGoal,
   getGoalContributions,
   invalidatePocketsCache,
+  invalidateTransactionsCache,
 } from "../../API/api";
 import { enrichPocket } from "../../utils/pocketUI";
 import { toast } from "sonner";
@@ -82,6 +83,7 @@ function GoalDel({
         );
       }
       invalidatePocketsCache();
+      invalidateTransactionsCache();
       onUpdated();
       onBack();
     } catch (error) {
@@ -111,8 +113,8 @@ function GoalDel({
 
         <p className="GoalDel-peringatan">
           Kamu yakin ingin menghapus <span>"{nameGoalDel}"</span>? Tindakan ini
-          tidak bisa dibatalkan dan seluruh riwayat penambahan dana pada goal
-          ini akan ikut terhapus.
+          tidak bisa dibatalkan. Dana setoran akan dikembalikan ke pocket asal
+          dan tercatat di Riwayat.
         </p>
 
         <div className="GoalDel-info">
